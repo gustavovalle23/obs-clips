@@ -6,74 +6,194 @@
   <title>Melhores Momentos</title>
 
   <style>
+    * {
+      box-sizing: border-box;
+    }
+
     html,
     body {
       width: 100%;
       height: 100%;
       margin: 0;
+      padding: 0;
       overflow: hidden;
-      background: transparent;
+      background: #000;
     }
 
-    #clip-container {
+    #container {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #000;
+    }
+
+    #player {
+      position: absolute;
+      inset: 0;
       width: 100%;
       height: 100%;
     }
 
-    iframe {
-      width: 100%;
-      height: 100%;
+    #player iframe {
+      width: 100% !important;
+      height: 100% !important;
       border: 0;
+    }
+
+    #status {
+      position: absolute;
+      left: 18px;
+      bottom: 18px;
+      z-index: 10;
+      padding: 8px 12px;
+      font-family: Arial, sans-serif;
+      font-size: 14px;
+      font-weight: 700;
+      color: white;
+      background: rgba(0, 0, 0, 0.65);
+      border-radius: 5px;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+
+    #status.visible {
+      opacity: 1;
     }
   </style>
 </head>
 
 <body>
-  <div id="clip-container"></div>
+  <div id="container">
+    <div id="player"></div>
+    <div id="status">Carregando...</div>
+  </div>
 
   <script>
-    const clips = [
-      "FaintAltruisticCamelPeoplesChamp-qE-vTkuetzIj-tTK",
-      "MuddySeductiveAsteriskNotLikeThis-IXKEeSHoNefllkUe"
+    const videos = [
+      "j9bDfDLCtow",
+      "i-QhoQGrPL0"
     ];
 
-    const parentDomain = "gustavovalle23.github.io";
-
-    const clipDuration = 30000;
-
+    let player;
     let queue = [];
+    let lastVideo = null;
+    let changingVideo = false;
 
-    function shuffleClips() {
-      queue = [...clips];
+    const statusElement = document.getElementById("status");
+
+    function shuffleVideos() {
+      queue = [...videos];
 
       for (let i = queue.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
-
         [queue[i], queue[j]] = [queue[j], queue[i]];
       }
+
+      if (
+        queue.length > 1 &&
+        lastVideo !== null &&
+        queue[0] === lastVideo
+      ) {
+        [queue[0], queue[1]] = [queue[1], queue[0]];
+      }
     }
 
-    function playClip() {
+    function getNextVideo() {
       if (queue.length === 0) {
-        shuffleClips();
+        shuffleVideos();
       }
 
-      const clip = queue.shift();
+      const video = queue.shift();
+      lastVideo = video;
 
-      document.getElementById("clip-container").innerHTML = `
-        <iframe
-          src="https://clips.twitch.tv/embed?clip=${clip}&parent=${parentDomain}&autoplay=true"
-          allow="autoplay; fullscreen"
-          allowfullscreen>
-        </iframe>
-      `;
+      return video;
     }
 
-    shuffleClips();
+    function playNextVideo() {
+      if (!player || changingVideo) {
+        return;
+      }
 
-    playClip();
+      changingVideo = true;
 
-    setInterval(playClip, clipDuration);
+      const videoId = getNextVideo();
+
+      player.loadVideoById({
+        videoId: videoId,
+        startSeconds: 0
+      });
+
+      setTimeout(() => {
+        changingVideo = false;
+      }, 1000);
+    }
+
+    function showStatus(text) {
+      statusElement.textContent = text;
+      statusElement.classList.add("visible");
+    }
+
+    function hideStatus() {
+      statusElement.classList.remove("visible");
+    }
+
+    function onYouTubeIframeAPIReady() {
+      shuffleVideos();
+
+      const firstVideo = getNextVideo();
+
+      player = new YT.Player("player", {
+        width: "100%",
+        height: "100%",
+        videoId: firstVideo,
+        playerVars: {
+          autoplay: 1,
+          controls: 0,
+          disablekb: 1,
+          fs: 0,
+          rel: 0,
+          playsinline: 1,
+          iv_load_policy: 3,
+          cc_load_policy: 0
+        },
+        events: {
+          onReady: onPlayerReady,
+          onStateChange: onPlayerStateChange,
+          onError: onPlayerError
+        }
+      });
+    }
+
+    function onPlayerReady(event) {
+      event.target.setVolume(100);
+      event.target.unMute();
+      event.target.playVideo();
+      hideStatus();
+    }
+
+    function onPlayerStateChange(event) {
+      if (event.data === YT.PlayerState.PLAYING) {
+        changingVideo = false;
+        hideStatus();
+      }
+
+      if (event.data === YT.PlayerState.ENDED) {
+        changingVideo = false;
+        playNextVideo();
+      }
+    }
+
+    function onPlayerError() {
+      changingVideo = false;
+      showStatus("Pulando vídeo...");
+      setTimeout(playNextVideo, 1500);
+    }
+
+    const tag = document.createElement("script");
+    tag.src = "https://www.youtube.com/iframe_api";
+    document.head.appendChild(tag);
   </script>
 </body>
 </html>
