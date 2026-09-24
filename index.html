@@ -41,6 +41,38 @@
       border: 0;
     }
 
+    #controls {
+      position: absolute;
+      left: 50%;
+      bottom: 20px;
+      transform: translateX(-50%);
+      z-index: 20;
+      display: flex;
+      gap: 10px;
+      opacity: 0;
+      transition: opacity 0.2s ease;
+    }
+
+    #container:hover #controls {
+      opacity: 1;
+    }
+
+    button {
+      border: 0;
+      padding: 10px 16px;
+      border-radius: 6px;
+      font-family: Arial, sans-serif;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      background: rgba(0, 0, 0, 0.75);
+      color: white;
+    }
+
+    button:hover {
+      background: rgba(30, 30, 30, 0.9);
+    }
+
     #status {
       position: absolute;
       left: 18px;
@@ -67,6 +99,12 @@
 <body>
   <div id="container">
     <div id="player"></div>
+
+    <div id="controls">
+      <button id="playPauseBtn">Pausar</button>
+      <button id="nextBtn">Próximo</button>
+    </div>
+
     <div id="status">Carregando...</div>
   </div>
 
@@ -82,6 +120,8 @@
     let changingVideo = false;
 
     const statusElement = document.getElementById("status");
+    const playPauseBtn = document.getElementById("playPauseBtn");
+    const nextBtn = document.getElementById("nextBtn");
 
     function shuffleVideos() {
       queue = [...videos];
@@ -139,6 +179,36 @@
       statusElement.classList.remove("visible");
     }
 
+    function updatePlayPauseButton() {
+      if (!player) {
+        return;
+      }
+
+      const state = player.getPlayerState();
+
+      if (state === YT.PlayerState.PLAYING) {
+        playPauseBtn.textContent = "Pausar";
+      } else {
+        playPauseBtn.textContent = "Reproduzir";
+      }
+    }
+
+    function togglePlayPause() {
+      if (!player) {
+        return;
+      }
+
+      const state = player.getPlayerState();
+
+      if (state === YT.PlayerState.PLAYING) {
+        player.pauseVideo();
+      } else {
+        player.playVideo();
+      }
+
+      setTimeout(updatePlayPauseButton, 100);
+    }
+
     function onYouTubeIframeAPIReady() {
       shuffleVideos();
 
@@ -170,6 +240,7 @@
       event.target.setVolume(100);
       event.target.unMute();
       event.target.playVideo();
+      updatePlayPauseButton();
       hideStatus();
     }
 
@@ -183,6 +254,8 @@
         changingVideo = false;
         playNextVideo();
       }
+
+      updatePlayPauseButton();
     }
 
     function onPlayerError() {
@@ -190,6 +263,13 @@
       showStatus("Pulando vídeo...");
       setTimeout(playNextVideo, 1500);
     }
+
+    playPauseBtn.addEventListener("click", togglePlayPause);
+
+    nextBtn.addEventListener("click", () => {
+      changingVideo = false;
+      playNextVideo();
+    });
 
     const tag = document.createElement("script");
     tag.src = "https://www.youtube.com/iframe_api";
